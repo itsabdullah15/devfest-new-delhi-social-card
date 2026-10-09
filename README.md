@@ -90,4 +90,13 @@ public/
 docs/            Screenshots for this README
 ```
 
+## Licence
+
+The code is released under the [MIT Licence](LICENSE).
+
+The GDG, DevFest and Commudle names and logos belong to their owners and aren't covered by this licence.
+If you reuse this for another event, replace them with your own branding in `src/config.js` and `public/assets/`.
+
+---
+
 Built with React and Vite for DevFest New Delhi 2026, organised by GDG New Delhi.
