@@ -4,7 +4,7 @@ Make a personalised **DevFest New Delhi 2026** card and share it on LinkedIn, In
 Attendees, volunteers and speakers add their photo, name and the day they're coming, pick a colour and a
 format, and download or post the card in one click.
 
-Everything runs in the browser. Photos are never uploaded.
+Everything runs in the browser. Photos are never uploaded; the person cut-out runs on the device too.
 
 ![The card generator: form on the left, live card preview on the right](docs/app.png)
 
@@ -20,7 +20,9 @@ Everything runs in the browser. Photos are never uploaded.
 - **Four formats:** LinkedIn post (1:1, 1200×1200), Instagram post (4:5, 1080×1350),
   X post (16:9, 1600×900) and Instagram/WhatsApp story (9:16, 1080×1920).
 - **Live preview** that updates as you type. Long names shrink and wrap to fit; a missing photo becomes initials.
-- **Five card colours** and a photo zoom slider.
+- **Neon "ATTENDING" frame:** the photo sits inside the event's marquee frame artwork, and the person is cut
+  out automatically (Google MediaPipe, in the browser) so their head pops out in front of the lettering. If no
+  person is found, the photo simply sits behind the frame. There's a photo zoom slider too.
 - **Post buttons** for LinkedIn, X, Instagram and Story, with a ready-made caption that tags the right
   accounts on each platform.
 - **Works on phones and desktop:** tested on 21 phone and tablet sizes (from a folded Galaxy Fold to iPad Pro)
@@ -62,11 +64,12 @@ All event details live in [`src/config.js`](src/config.js):
 | `time`, `venue` | Start time and venue shown on the card |
 | `hashtag`, `hashtags` | Hashtag on the card and in captions |
 | `mentions` | Accounts tagged in the caption for each platform |
-| `themes` | Card colours |
 
-**Logos.** The card draws the GDG bracket mark with "GDG New Delhi" next to it. To use the official
-logo file instead, save it as `public/assets/gdg-new-delhi-logo.png` (transparent PNG). The Commudle
-wordmark is `public/assets/commudle-logo.png`.
+**Frame and logos.** The frame artwork is `public/assets/frame-attending.webp` (1080×1350, with a transparent
+centre). The Commudle wordmark is `public/assets/commudle-logo.png` and is made white automatically for the dark card.
+
+**Pop-out download.** The first time someone adds a photo, the browser downloads the MediaPipe engine (~3.5 MB,
+from jsDelivr) and the selfie segmentation model (~250 KB, from Google). After that it's cached.
 
 ## Deploying
 

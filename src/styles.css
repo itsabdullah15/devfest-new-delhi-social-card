@@ -72,6 +72,7 @@ input[aria-invalid="true"] { border-color: var(--danger); }
 }
 .photo-text { display: grid; font-size: 13px; color: var(--muted); }
 .photo-text strong { font-size: 14px; font-weight: 500; color: var(--text); }
+.photo-status { font-size: 13px; color: var(--muted); }
 .zoom { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
 .zoom input { flex: 1; accent-color: var(--brand); }
 

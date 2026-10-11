@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PASS_CONFIG } from "./config.js";
-import { FORMATS, GDG_MARK, drawPass, loadPassFonts } from "./drawPass.js";
+import { FORMATS, GDG_MARK, drawPass, lightenLogo, loadPassFonts } from "./drawPass.js";
 import { PLATFORMS, prefersShareSheet } from "./platforms.jsx";
+import { cutOutPerson } from "./cutout.js";
 
 const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
 
@@ -62,11 +63,14 @@ export default function App() {
   const [org, setOrg] = useState("");
   const [dayId, setDayId] = useState(null);
   const [formatId, setFormatId] = useState(FORMATS[0].id);
-  const [themeId, setThemeId] = useState(PASS_CONFIG.themes[0].id);
   const [photo, setPhoto] = useState(null); // { img, url }
+  const [cutout, setCutout] = useState(null); // person cut out of the photo, for the pop-out effect
+  const [cutoutState, setCutoutState] = useState("idle"); // "idle" | "working" | "done" | "failed"
+  // The in-flight cut-out, so a download started meanwhile can wait for it instead of exporting without the pop-out.
+  const cutoutJob = useRef(Promise.resolve(null));
   const [zoom, setZoom] = useState(1);
   const [photoError, setPhotoError] = useState("");
-  const [logo, setLogo] = useState(null);
+  const [frame, setFrame] = useState(null);
   const [commudle, setCommudle] = useState(null);
   const [fontsReady, setFontsReady] = useState(false);
   const [attempted, setAttempted] = useState(false);
@@ -81,7 +85,6 @@ export default function App() {
   const isTouch = useMemo(() => window.matchMedia?.("(pointer: coarse)").matches ?? false, []);
   const [notice, setNotice] = useState("");
 
-  const theme = PASS_CONFIG.themes.find((t) => t.id === themeId);
   const format = FORMATS.find((f) => f.id === formatId);
   const day = PASS_CONFIG.days.find((d) => d.id === dayId) || null;
   const passType = PASS_CONFIG.passTypes.find((t) => t.id === passTypeId);
@@ -94,18 +97,43 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadImage(PASS_CONFIG.logo, setLogo);
-    loadImage(PASS_CONFIG.commudleLogo, setCommudle);
+    loadImage(PASS_CONFIG.frame, setFrame);
+    loadImage(PASS_CONFIG.commudleLogo, (img) => setCommudle(lightenLogo(img)));
   }, []);
 
   // Free the previous photo's object URL when it is replaced or the app unmounts.
   useEffect(() => () => photo && URL.revokeObjectURL(photo.url), [photo]);
 
+  // Cut the person out of each new photo for the pop-out. If it fails or finds no person, the card simply
+  // shows the photo without the pop-out. A newer photo cancels an older run.
+  useEffect(() => {
+    setCutout(null);
+    if (!photo) {
+      setCutoutState("idle");
+      return undefined;
+    }
+    let cancelled = false;
+    setCutoutState("working");
+    const job = cutOutPerson(photo.img).catch((error) => {
+      console.warn("Pop-out unavailable:", error);
+      return null;
+    });
+    cutoutJob.current = job;
+    job.then((result) => {
+      if (cancelled) return;
+      setCutout(result);
+      setCutoutState(result ? "done" : "failed");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [photo]);
+
   useEffect(() => {
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
-    drawPass(ctx, { name, role, org, day, theme, photo: photo?.img, zoom, logo, commudle, format: formatId, passType }, PASS_CONFIG);
-  }, [name, role, org, day, theme, photo, zoom, logo, commudle, formatId, passType, fontsReady]);
+    drawPass(ctx, { name, role, org, day, photo: photo?.img, cutout, zoom, frame, commudle, format: formatId, passType }, PASS_CONFIG);
+  }, [name, role, org, day, photo, cutout, zoom, frame, commudle, formatId, passType, fontsReady]);
 
   function loadPhoto(file) {
     setPhotoError("");
@@ -140,11 +168,13 @@ export default function App() {
 
   // Renders the pass in any format on an offscreen canvas, independent of the preview's size.
   async function renderFile(formatId) {
+    // If the photo is still being cut out, wait for it so the download includes the pop-out.
+    const cut = photo ? await cutoutJob.current : null;
     const f = FORMATS.find((x) => x.id === formatId);
     const canvas = document.createElement("canvas");
     canvas.width = f.width;
     canvas.height = f.height;
-    drawPass(canvas.getContext("2d"), { name, role, org, day, theme, photo: photo?.img, zoom, logo, commudle, format: f.id, passType }, PASS_CONFIG);
+    drawPass(canvas.getContext("2d"), { name, role, org, day, photo: photo?.img, cutout: cut, zoom, frame, commudle, format: f.id, passType }, PASS_CONFIG);
     const blob = await canvasToBlob(canvas);
     return new File([blob], `devfest-new-delhi-2026-${passType.id}-${slugify(name)}-${f.id}.png`, { type: "image/png" });
   }
@@ -316,6 +346,13 @@ export default function App() {
                 <input id="zoom" type="range" min="1" max="2.5" step="0.01" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
               </div>
             )}
+            {photo && cutoutState !== "done" && (
+              <p className="photo-status" role="status">
+                {cutoutState === "working"
+                  ? "Placing you in front of the sign…"
+                  : "Couldn’t find a person in this photo, so it sits behind the sign. A clear headshot works best."}
+              </p>
+            )}
             {photoError && (
               <p className="error" role="alert">
                 {photoError}
@@ -381,18 +418,6 @@ export default function App() {
                 Pick the {passType.dayLabel.toLowerCase()}.
               </p>
             )}
-          </fieldset>
-
-          <fieldset className="field">
-            <legend className="label">Choose Your Card Colour</legend>
-            <div className="swatches">
-              {PASS_CONFIG.themes.map((t) => (
-                <label className="swatch" key={t.id} title={t.label}>
-                  <input type="radio" name="theme" className="sr-only" checked={themeId === t.id} onChange={() => setThemeId(t.id)} aria-label={t.label} />
-                  <span style={{ background: t.bg }} />
-                </label>
-              ))}
-            </div>
           </fieldset>
 
           <fieldset className="field">
