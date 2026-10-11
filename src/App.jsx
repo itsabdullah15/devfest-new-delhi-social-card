@@ -58,6 +58,7 @@ function GdgMark() {
 
 export default function App() {
   const [passTypeId, setPassTypeId] = useState(PASS_CONFIG.passTypes[0].id);
+  const [frameColourId, setFrameColourId] = useState(PASS_CONFIG.frameColours[0].id);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [org, setOrg] = useState("");
@@ -70,7 +71,6 @@ export default function App() {
   const cutoutJob = useRef(Promise.resolve(null));
   const [zoom, setZoom] = useState(1);
   const [photoError, setPhotoError] = useState("");
-  const [frame, setFrame] = useState(null);
   const [commudle, setCommudle] = useState(null);
   const [fontsReady, setFontsReady] = useState(false);
   const [attempted, setAttempted] = useState(false);
@@ -88,6 +88,7 @@ export default function App() {
   const format = FORMATS.find((f) => f.id === formatId);
   const day = PASS_CONFIG.days.find((d) => d.id === dayId) || null;
   const passType = PASS_CONFIG.passTypes.find((t) => t.id === passTypeId);
+  const frameColour = PASS_CONFIG.frameColours.find((c) => c.id === frameColourId);
   const caption = buildCaption(passType, day);
   const nameError = attempted && !name.trim();
   const dayError = attempted && !day;
@@ -97,7 +98,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadImage(PASS_CONFIG.frame, setFrame);
     loadImage(PASS_CONFIG.commudleLogo, (img) => setCommudle(lightenLogo(img)));
   }, []);
 
@@ -132,8 +132,8 @@ export default function App() {
   useEffect(() => {
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
-    drawPass(ctx, { name, role, org, day, photo: photo?.img, cutout, zoom, frame, commudle, format: formatId, passType }, PASS_CONFIG);
-  }, [name, role, org, day, photo, cutout, zoom, frame, commudle, formatId, passType, fontsReady]);
+    drawPass(ctx, { name, role, org, day, photo: photo?.img, cutout, zoom, commudle, format: formatId, passType, frameColour }, PASS_CONFIG);
+  }, [name, role, org, day, photo, cutout, zoom, commudle, formatId, passType, frameColour, fontsReady]);
 
   function loadPhoto(file) {
     setPhotoError("");
@@ -174,7 +174,7 @@ export default function App() {
     const canvas = document.createElement("canvas");
     canvas.width = f.width;
     canvas.height = f.height;
-    drawPass(canvas.getContext("2d"), { name, role, org, day, photo: photo?.img, cutout: cut, zoom, frame, commudle, format: f.id, passType }, PASS_CONFIG);
+    drawPass(canvas.getContext("2d"), { name, role, org, day, photo: photo?.img, cutout: cut, zoom, commudle, format: f.id, passType, frameColour }, PASS_CONFIG);
     const blob = await canvasToBlob(canvas);
     return new File([blob], `devfest-new-delhi-2026-${passType.id}-${slugify(name)}-${f.id}.png`, { type: "image/png" });
   }
@@ -418,6 +418,18 @@ export default function App() {
                 Pick the {passType.dayLabel.toLowerCase()}.
               </p>
             )}
+          </fieldset>
+
+          <fieldset className="field">
+            <legend className="label">Choose Your Frame Colour</legend>
+            <div className="swatches">
+              {PASS_CONFIG.frameColours.map((c) => (
+                <label className="swatch" key={c.id} title={c.label}>
+                  <input type="radio" name="frame-colour" className="sr-only" checked={frameColourId === c.id} onChange={() => setFrameColourId(c.id)} aria-label={c.label} />
+                  <span style={{ background: c.swatch }} />
+                </label>
+              ))}
+            </div>
           </fieldset>
 
           <fieldset className="field">

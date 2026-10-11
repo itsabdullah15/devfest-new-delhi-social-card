@@ -99,7 +99,7 @@ input[aria-invalid="true"] { border-color: var(--danger); }
 .day-date { margin-left: auto; color: var(--muted); font-size: 14px; white-space: nowrap; }
 
 .pass-types {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 4px; gap: 4px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 4px; gap: 4px;
   background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
 }
 .pass-type { position: relative; cursor: pointer; }
